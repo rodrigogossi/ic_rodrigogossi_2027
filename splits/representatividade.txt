@@ -1,0 +1,19 @@
+Total: 542 | Teste: 109 (20.1%) | Treino: 433
+
+Área da colônia (mm²) — quantis
+         completo  treino   teste
+mín          31.0    37.1    31.0
+p10          56.9    56.9    57.5
+p25          70.4    70.2    71.5
+mediana     611.3   639.5   559.8
+p75        1994.4  1989.5  2118.1
+p90        3752.6  3749.8  3522.1
+máx        5611.2  5611.2  5365.3
+
+Kolmogorov-Smirnov treino x teste (área): D=0.040  p=0.998
+  (p > 0,05 => não há evidência de que as distribuições de área diferem)
+
+faixa_area: qui-quadrado p=1.000 | % no teste por categoria: 0=20.0, 1=20.4, 2=20.4, 3=20.4, 4=20.4, 5=20.4, 6=20.4, 7=20.4, 8=18.5, 9=20.0
+tratamento: qui-quadrado p=0.515 | % no teste por categoria: t2=18.9, t3=22.4, t4=16.9, t5=24.0, t6=14.3
+volume: qui-quadrado p=0.442 | % no teste por categoria: 0uL=14.3, 100uL=18.7, 20uL=23.2, 40uL=26.0, 60uL=16.0, 80uL=18.8
+dia: qui-quadrado p=0.575 | % no teste por categoria: d1=20.7, d2=22.2, d3=16.7, d4=24.1, d5=16.8

@@ -1,0 +1,7 @@
+.venv/
+.DS_Store
+__pycache__/
+
+# imagens ficam fora do git (versionar só scripts e manifestos em splits/)
+data/
+checks/
