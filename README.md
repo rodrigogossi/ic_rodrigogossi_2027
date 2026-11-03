@@ -7,6 +7,9 @@
 
 > Metodologia completa (gabarito, estratificação e aumento):
 > [docs/metodologia_dados.md](docs/metodologia_dados.md)
+>
+> Hiperparâmetros do YOLO e plano de busca com Optuna:
+> [docs/hiperparametros_optuna.md](docs/hiperparametros_optuna.md) ([PDF](docs/hiperparametros_optuna.pdf))
 
 ```
 data/raw  (542 imagens + labels YOLO do Label Studio)
