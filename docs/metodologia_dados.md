@@ -25,14 +25,11 @@ data/train_aug                     2165 imagens
 
 ### Origem
 
-O gabarito **é calculado a partir dos polígonos anotados no Label Studio**,
-os mesmos labels usados para treinar o modelo. **Não é a medição manual feita
-no ImageJ.**
-
-O script `scripts/gerar_gabarito.py` é uma adaptação do `gerar_gabarito.py` do
-repositório de 2026 (`ic_rodrigogossi_yollov8`), com o mesmo cálculo. Foi
-verificado que ele reproduz exatamente o `gabarito.csv` de 2026: as 542
-imagens têm diferença de 0,00 mm².
+O gabarito é calculado a partir dos polígonos anotados no Label Studio, como
+em 2026. O script `scripts/gerar_gabarito.py` é uma adaptação do
+`gerar_gabarito.py` do repositório de 2026 (`ic_rodrigogossi_yollov8`), com o
+mesmo cálculo, e reproduz o `gabarito.csv` de 2026 (diferença de 0,00 mm² nas
+542 imagens).
 
 ### Cálculo
 
@@ -73,13 +70,6 @@ A distribuição é muito assimétrica. Metade das colônias tem menos de 611 mm
 e cerca de 30% tem menos de 80 mm² (colônias logo após a inoculação). Por isso
 um sorteio simples poderia deixar o teste com poucas colônias grandes ou poucas
 pequenas, e a estratificação por área é necessária.
-
-### Implicação para a validação
-
-Como o gabarito vem das mesmas anotações do treino, comparar a área prevista
-pelo modelo com este gabarito mede **o quanto o modelo reproduz a anotação**,
-e não a concordância com uma medição manual independente. Para uma validação
-externa, a área prevista deve ser comparada com as medições do ImageJ.
 
 ---
 

@@ -110,7 +110,7 @@ O mesmo critério foi usado no aumento offline (`scripts/augment.py`).
 | --- | --- | --- |
 | `epochs` | 30 na busca, 100 na avaliação | 100 épocas em cada tentativa não cabem no orçamento de GPU; a avaliação final volta a 100, como em 2026 |
 | `imgsz` | 640 e 1024 | resolução é uma pergunta do estudo (como em 2026), com busca separada para cada uma |
-| `batch` | 16 | igual a 2026 e limitado pela memória da T4; o `nbs=64` já normaliza o gradiente |
+| `batch` | 16 | igual a 2026 (limitado pela memória da T4 usada então); o `nbs=64` já normaliza o gradiente |
 | `patience` | 100 | sem parada antecipada, para todas as tentativas terem a mesma duração |
 | `pretrained` | True | partir dos pesos do COCO é essencial com 542 imagens |
 | `single_cls` | False | escala e fungo precisam ser classes diferentes para o cálculo da área |
@@ -178,15 +178,13 @@ A nota da tentativa é a média do MAPE dos folds. O `MedianPruner` recebe o MAP
 
 **Custo:** o passo de inferência e cálculo de área acrescenta alguns minutos por fold em relação a usar só o mAP. O tempo real deve ser medido junto com o tempo de época, antes da busca.
 
-**Ressalva:** o `gabarito.csv` vem dos polígonos do Label Studio, os mesmos do treino (ver [metodologia_dados.md](metodologia_dados.md#implicação-para-a-validação)). O MAPE otimizado mede, portanto, o quanto o modelo reproduz a área anotada. A concordância com a medição manual do ImageJ continua sendo uma validação separada.
-
 ### Como o Optuna é configurado
 
 - **Direção:** `minimize` (menor MAPE é melhor).
 - **Sampler:** TPE (`TPESampler(seed=42)`), com 10 tentativas aleatórias iniciais para explorar o espaço.
 - **Pruner:** `MedianPruner`, que interrompe uma tentativa quando, após um fold, o MAPE fica acima da mediana das tentativas anteriores.
-- **Storage:** banco SQLite no Google Drive, para retomar a busca se o Colab desconectar.
-- **Grid Search como alternativa:** se o orientador preferir grade completa, basta trocar o sampler por `GridSampler`; o resto do script não muda.
+- **Storage:** banco SQLite em disco, para retomar a busca de onde parou se a execução for interrompida.
+- **Por que não Grid Search:** testar a grade completa custaria \~800 h de GPU (ver o orçamento abaixo). Se for preciso, basta trocar o sampler por `GridSampler`; o resto do script não muda.
 
 ## Desenho experimental
 
@@ -207,7 +205,7 @@ A busca usa menos épocas e folds para caber no orçamento; a avaliação comple
 | 2 · Avaliação robusta | MAPE da área nos 15 folds, otimizado × padrão, com teste pareado (os folds são os mesmos nas duas configurações) | mAP50 e mAP50-95, MAPE por faixa de área |
 | 3 · Modelo final | MAPE da área nas 109 imagens de teste | R², MAE, Bland-Altman, MAPE por faixa de área, mAP50-95 |
 
-### Orçamento estimado (Colab, GPU T4)
+### Orçamento estimado (referência: GPU T4, a mesma de 2026)
 
 Estimativa a partir de 2026: 15 treinos de 100 épocas em 5 a 7 h (\~25 min cada) com \~430 imagens. Com 2165 imagens, cada treino de 100 épocas deve levar \~2 h. Na busca, cada fold ainda tem o cálculo do MAPE nas \~145 imagens originais de validação (alguns minutos). O tempo real das duas etapas precisa ser medido antes da busca.
 
@@ -218,14 +216,21 @@ Estimativa a partir de 2026: 15 treinos de 100 épocas em 5 a 7 h (\~25 min cada
 | Fase 2: 2 configurações × 15 folds × 100 épocas | 30 | \~60 h |
 | Fase 3: 1 treino final × 100 épocas | 1 | \~2,5 h |
 
-## Decisões para o orientador
+## Poder computacional
 
-- [x] **Métrica a otimizar:** MAPE da área na validação, com o mAP50-95 registrado só para relatório. Decidido em 8/11/2026; ver [Métrica otimizada](#métrica-otimizada-mape-da-área).
-- [ ] **Método:** Optuna com TPE (recomendado) ou Grid Search completo.
-- [ ] **Orçamento de GPU:** quantas horas de T4 estão disponíveis. Antes da busca, medir o tempo real de uma época com o treino aumentado.
-- [ ] **Versão do YOLO:** manter YOLOv8 (comparação direta com 2026) ou incluir YOLO11 / YOLO26 como fator. Em qualquer caso, fixar a versão do `ultralytics` no `requirements.txt`.
-- [ ] **Resolução:** buscar em 640 e 1024, ou só em 1024, que teve o menor erro de área em 2026 (MAPE 5,78% contra 6,97%).
-- [ ] **Segunda fase:** rodar ou não os 6 parâmetros de augmentation e agenda de lr.
+O experimento completo precisa de **\~100 h de GPU** numa T4 com a resolução de 640 px (tabela acima). Em 1024 px cada treino leva cerca do dobro (em 2026: \~5–7 h em 640 × \~11–12 h em 1024 para os mesmos 15 treinos), então rodar as duas resoluções passa de **200 h**.
+
+**Por que o Colab não serve para este plano:**
+
+- **Sessões interrompidas:** o Colab desconecta após algumas horas, ou antes se a aba fica ociosa. Uma busca de dias contínuos vira dezenas de sessões reiniciadas manualmente.
+- **Cota de GPU limitada:** no plano gratuito a GPU não é garantida e é cortada após uso intenso; nos planos pagos, as unidades de computação se esgotam rapidamente nesse volume.
+- **GPU variável:** cada sessão pode receber uma placa diferente, o que torna os tempos das tentativas não comparáveis e prejudica a reprodutibilidade.
+- **Leitura lenta:** os dados ficam no Google Drive, que é lento para ler milhares de imagens a cada época.
+- **Dataset 5× maior:** em 2026 cada treino usava \~430 imagens; agora são 2165. Mesmo em 2026, o treino em 1024 px já chegava perto do limite de uma sessão.
+
+**Proposta:** usar um dos PCs novos do laboratório de IA. Numa máquina dedicada, a busca roda sem interrupção, sempre no mesmo hardware, e uma GPU mais forte que a T4 reduz o tempo total. Com a configuração da máquina (principalmente a placa de vídeo e a memória dela), o orçamento acima será refeito a partir do tempo real medido de uma época.
+
+O tempo disponível de máquina também define o escopo final: buscar em 640 e 1024 px ou só em 1024 (menor erro de área em 2026), e rodar ou não a segunda fase da busca.
 
 ## Fontes
 

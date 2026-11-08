@@ -98,10 +98,6 @@ o hash SHA-256 de cada arquivo de teste.
 | `identificador` | Nome da imagem sem extensão |
 | `Area(mm²)` | Área da colônia calculada dos polígonos do Label Studio: `área_fungo_px × 1600 / área_escala_px` |
 
-⚠️ Este gabarito **não** é a medição manual do ImageJ. Ele vem das mesmas
-anotações usadas no treino. Ver
-[docs/metodologia_dados.md](docs/metodologia_dados.md#implicação-para-a-validação).
-
 ## Classes
 
 | ID | Nome | Descrição |

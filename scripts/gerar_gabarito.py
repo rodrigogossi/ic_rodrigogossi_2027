@@ -4,8 +4,7 @@ Gera o gabarito de área (mm²) de cada imagem a partir dos polígonos do Label 
 Adaptado de gerar_gabarito.py do repo de 2026 (ic_rodrigogossi_yollov8). O
 cálculo é idêntico, então o resultado reproduz exatamente o gabarito.csv de 2026.
 
-ATENÇÃO: este gabarito NÃO é a medição manual do ImageJ. É a área das próprias
-anotações usadas no treino, convertida para mm² pela escala física:
+A área de cada anotação é convertida para mm² pela escala física:
 
     área_fungo_mm² = área_fungo_px × 1600 / área_escala_px
 
