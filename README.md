@@ -8,7 +8,8 @@
 > Metodologia completa (gabarito, estratificação e aumento):
 > [docs/metodologia_dados.md](docs/metodologia_dados.md)
 >
-> Hiperparâmetros do YOLO e plano de busca com Optuna:
+> Hiperparâmetros do YOLO e plano de busca com Optuna (métrica otimizada:
+> MAPE da área):
 > [docs/hiperparametros_optuna.md](docs/hiperparametros_optuna.md) ([PDF](docs/hiperparametros_optuna.pdf))
 
 ```

@@ -1,8 +1,8 @@
 # Hiperparâmetros do YOLO e busca com Optuna
 
-2 de novembro de 2026 · Rodrigo Gossi
+2 de novembro de 2026, atualizado em 8 de novembro de 2026 · Rodrigo Gossi
 
-Em 2027 vamos otimizar 6 hiperparâmetros do YOLO com Optuna e comparar o resultado com o treino de 2026, que usou os valores padrão.
+Em 2027 vamos otimizar 6 hiperparâmetros do YOLO com Optuna, escolhendo a combinação que dá o menor erro na medição da área da colônia (MAPE), e comparar o resultado com o treino de 2026, que usou os valores padrão.
 
 ## Contexto
 
@@ -156,7 +156,7 @@ O Optuna escolhe a combinação vencedora apenas pelo número que cada tentativa
 
 - O objetivo do projeto é medir a área em mm², e o MAPE mede isso diretamente. O mAP mede a sobreposição das máscaras e se relaciona com a área só de forma indireta: um modelo pode ter mAP alto e errar a área de forma sistemática, por exemplo se a borda prevista fica sempre um pouco para fora.
 - No cálculo da área a escala é o divisor, então um erro na máscara da escala contamina a medida do fungo. O mAP trata as duas classes como objetos independentes e não captura esse efeito.
-- Foi a métrica usada para comparar 640 e 1024 px em 2026 (MAPE 6,97% × 5,78%), o que mantém a comparação direta.
+- Foi a métrica usada para comparar 640 e 1024 px em 2026 (MAPE 6,97% × 5,78%), então o trabalho continua falando a mesma língua do anterior.
 
 **Como é calculado em cada tentativa:**
 
@@ -199,10 +199,17 @@ A busca usa menos épocas e folds para caber no orçamento; a avaliação comple
 - **K-Fold por `origem`:** em todas as fases, as 4 cópias aumentadas de uma imagem ficam no mesmo fold que a original (`GroupKFold` pela coluna `origem` de `splits/augment.csv`). Sem isso, o modelo seria validado em cópias de imagens que já viu.
 - **Por que o teste fica isolado:** escolher a melhor combinação pela nota do K-Fold deixa essa nota otimista, porque ela foi escolhida justamente por ser a maior. O nested cross-validation corrigiria isso, mas custaria dezenas de vezes mais. O teste isolado, que nunca participou de nenhuma escolha, dá a estimativa honesta.
 - **Baseline:** a fase 2 treina também com os valores padrão, nas mesmas condições (mesma versão do YOLO, mesmos folds). É isso que permite afirmar que a otimização melhorou o resultado.
+- **Métricas em cada fase:**
+
+| Fase | Métrica principal | Também reportado |
+| --- | --- | --- |
+| 1 · Busca | MAPE da área, média de 3 folds (é o que o Optuna minimiza) | mAP50-95, MAPE por faixa de área, falhas de detecção |
+| 2 · Avaliação robusta | MAPE da área nos 15 folds, otimizado × padrão, com teste pareado (os folds são os mesmos nas duas configurações) | mAP50 e mAP50-95, MAPE por faixa de área |
+| 3 · Modelo final | MAPE da área nas 109 imagens de teste | R², MAE, Bland-Altman, MAPE por faixa de área, mAP50-95 |
 
 ### Orçamento estimado (Colab, GPU T4)
 
-Estimativa a partir de 2026: 15 treinos de 100 épocas em 5 a 7 h (\~25 min cada) com \~430 imagens. Com 2165 imagens, cada treino de 100 épocas deve levar \~2 h. O tempo real precisa ser medido antes da busca.
+Estimativa a partir de 2026: 15 treinos de 100 épocas em 5 a 7 h (\~25 min cada) com \~430 imagens. Com 2165 imagens, cada treino de 100 épocas deve levar \~2 h. Na busca, cada fold ainda tem o cálculo do MAPE nas \~145 imagens originais de validação (alguns minutos). O tempo real das duas etapas precisa ser medido antes da busca.
 
 | Etapa | Treinos | Tempo estimado |
 | --- | --- | --- |
