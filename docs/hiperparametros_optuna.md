@@ -146,10 +146,45 @@ A busca principal otimiza 6 parâmetros; outros 6 entram numa segunda fase só s
 
 Esses 6 parâmetros complementam o aumento offline; a segunda fase responde se vale reforçá-los ou enfraquecê-los.
 
+### Métrica otimizada: MAPE da área
+
+*Decidido em 8 de novembro de 2026.*
+
+O Optuna escolhe a combinação vencedora apenas pelo número que cada tentativa devolve. A busca vai **minimizar o MAPE da área da colônia** (erro percentual absoluto médio entre a área prevista e a do `gabarito.csv`), calculado nas imagens de validação de cada fold.
+
+**Por que o MAPE e não o mAP50-95:**
+
+- O objetivo do projeto é medir a área em mm², e o MAPE mede isso diretamente. O mAP mede a sobreposição das máscaras e se relaciona com a área só de forma indireta: um modelo pode ter mAP alto e errar a área de forma sistemática, por exemplo se a borda prevista fica sempre um pouco para fora.
+- No cálculo da área a escala é o divisor, então um erro na máscara da escala contamina a medida do fungo. O mAP trata as duas classes como objetos independentes e não captura esse efeito.
+- Foi a métrica usada para comparar 640 e 1024 px em 2026 (MAPE 6,97% × 5,78%), o que mantém a comparação direta.
+
+**Como é calculado em cada tentativa:**
+
+1. Treina no fold (30 épocas).
+2. Roda inferência nas imagens **originais** de validação do fold, sem as cópias aumentadas, com `retina_masks=True`.
+3. Para cada imagem: maior máscara de `escala`, soma das máscaras de `fungo`, área (mm²) = px_fungo × 1600 / px_escala. É o mesmo pipeline dos notebooks `calculo_de_area` de 2026.
+4. MAPE do fold = média de |prevista − gabarito| / gabarito × 100.
+5. Imagens sem escala ou sem fungo detectados recebem **erro de 100%**, para que o Optuna não favoreça modelos que deixam de detectar os casos difíceis. O número dessas falhas é registrado.
+
+A nota da tentativa é a média do MAPE dos folds. O `MedianPruner` recebe o MAPE acumulado após cada fold.
+
+**O que é registrado em toda tentativa, só para relatório** (não influencia a escolha):
+
+- mAP50 e mAP50-95 da máscara, que a Ultralytics já calcula na validação;
+- MAPE por faixa de área (os mesmos decis da estratificação do teste);
+- número de imagens sem escala ou sem fungo detectados.
+
+**Cuidado com o viés do MAPE:** por ser um erro relativo, ele dá muito peso às colônias pequenas. Um erro de 2 mm² vale 5% numa colônia de 40 mm² e 0,05% numa de 4000 mm², e cerca de 30% do dataset tem menos de 80 mm². Por isso o MAPE por faixa de área é reportado nas fases 2 e 3, para mostrar que o ganho não veio só das colônias pequenas às custas das grandes.
+
+**Custo:** o passo de inferência e cálculo de área acrescenta alguns minutos por fold em relação a usar só o mAP. O tempo real deve ser medido junto com o tempo de época, antes da busca.
+
+**Ressalva:** o `gabarito.csv` vem dos polígonos do Label Studio, os mesmos do treino (ver [metodologia_dados.md](metodologia_dados.md#implicação-para-a-validação)). O MAPE otimizado mede, portanto, o quanto o modelo reproduz a área anotada. A concordância com a medição manual do ImageJ continua sendo uma validação separada.
+
 ### Como o Optuna é configurado
 
+- **Direção:** `minimize` (menor MAPE é melhor).
 - **Sampler:** TPE (`TPESampler(seed=42)`), com 10 tentativas aleatórias iniciais para explorar o espaço.
-- **Pruner:** `MedianPruner`, que interrompe uma tentativa quando, após um fold, a nota fica abaixo da mediana das tentativas anteriores.
+- **Pruner:** `MedianPruner`, que interrompe uma tentativa quando, após um fold, o MAPE fica acima da mediana das tentativas anteriores.
 - **Storage:** banco SQLite no Google Drive, para retomar a busca se o Colab desconectar.
 - **Grid Search como alternativa:** se o orientador preferir grade completa, basta trocar o sampler por `GridSampler`; o resto do script não muda.
 
@@ -178,7 +213,7 @@ Estimativa a partir de 2026: 15 treinos de 100 épocas em 5 a 7 h (\~25 min cada
 
 ## Decisões para o orientador
 
-- [ ] **Métrica a otimizar:** mAP50-95 da máscara (métrica padrão em segmentação), erro de área na validação (MAPE, alinhado ao objetivo do projeto) ou uma combinação das duas.
+- [x] **Métrica a otimizar:** MAPE da área na validação, com o mAP50-95 registrado só para relatório. Decidido em 8/11/2026; ver [Métrica otimizada](#métrica-otimizada-mape-da-área).
 - [ ] **Método:** Optuna com TPE (recomendado) ou Grid Search completo.
 - [ ] **Orçamento de GPU:** quantas horas de T4 estão disponíveis. Antes da busca, medir o tempo real de uma época com o treino aumentado.
 - [ ] **Versão do YOLO:** manter YOLOv8 (comparação direta com 2026) ou incluir YOLO11 / YOLO26 como fator. Em qualquer caso, fixar a versão do `ultralytics` no `requirements.txt`.
