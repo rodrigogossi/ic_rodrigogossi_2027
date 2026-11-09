@@ -5,3 +5,7 @@ __pycache__/
 # imagens ficam fora do git (versionar só scripts e manifestos em splits/)
 data/
 checks/
+
+# resultados de treino e pesos baixados pela Ultralytics
+runs/
+*.pt

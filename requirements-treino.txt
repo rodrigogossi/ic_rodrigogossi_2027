@@ -1,0 +1,11 @@
+# Ambiente de treino (PC com GPU). O preparo dos dados usa requirements.txt.
+# O torch vem como dependência da Ultralytics; se a versão instalada não
+# enxergar a GPU, instale o torch indicado em https://pytorch.org para a
+# versão de CUDA da máquina antes deste arquivo.
+ultralytics==8.4.198
+optuna==5.0.0
+pandas>=2.0
+scikit-learn>=1.3
+scipy>=1.10
+matplotlib>=3.7
+pyyaml>=6.0

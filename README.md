@@ -91,6 +91,93 @@ As imagens não são versionadas (`data/` está no `.gitignore`). A separação 
 reproduzível pela seed fixa e documentada em `splits/split.csv`, que registra
 o hash SHA-256 de cada arquivo de teste.
 
+## Treinamento
+
+O desenho das três fases está em
+[docs/hiperparametros_optuna.md](docs/hiperparametros_optuna.md). Cada fase é
+um script em `scripts/`; o código comum (folds, treino, medição de área) fica
+em `scripts/treino_comum.py`.
+
+### Preparar a máquina de treino
+
+```bash
+git clone https://github.com/rodrigogossi/ic_rodrigogossi_2027.git && cd ic_rodrigogossi_2027
+python3 -m venv .venv && .venv/bin/pip install -r requirements-treino.txt
+.venv/bin/python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+
+Copiar para a máquina as pastas `data/train_aug/` e `data/test/` (não estão no
+git) e conferir o teste antes de começar:
+
+```bash
+.venv/bin/python scripts/split_teste.py --verify
+```
+
+Os treinos levam horas ou dias: rode dentro de `tmux` ou `screen` para não
+perder a execução se a conexão cair. Todos os scripts retomam de onde pararam
+se forem chamados de novo com os mesmos argumentos.
+
+### 0. Medir o tempo real
+
+Antes da busca, treinar 1 fold com poucas épocas para refazer o orçamento:
+
+```bash
+.venv/bin/python scripts/fase2_avaliacao.py --imgsz 640 --config padrao --max-folds 1 --epochs 3 --saida runs/tempo
+```
+
+O tempo por época sai em `runs/tempo/fase2_640/padrao/metricas_folds.csv`
+(`minutos_treino` / 3).
+
+### 1. Busca com Optuna
+
+```bash
+.venv/bin/python scripts/fase1_optuna.py --imgsz 640                  # 30 tentativas × 3 folds × 30 épocas
+.venv/bin/python scripts/fase1_optuna.py --imgsz 640 --segunda-fase   # opcional, se sobrar tempo
+```
+
+O Optuna minimiza o MAPE da área nas imagens originais de validação de cada
+fold. O estudo fica em `runs/optuna.db`; a configuração vencedora vai para
+`runs/fase1_640/melhores_parametros.json`.
+
+### 2. Otimizado × padrão
+
+```bash
+.venv/bin/python scripts/fase2_avaliacao.py --imgsz 640 --config padrao
+.venv/bin/python scripts/fase2_avaliacao.py --imgsz 640 --config otimizado
+.venv/bin/python scripts/fase2_comparar.py --imgsz 640
+```
+
+Repeated K-Fold 3×5 com 100 épocas, os mesmos folds nas duas configurações.
+A comparação (Wilcoxon e t pareados, MAPE por faixa de área) fica em
+`runs/fase2_640/comparacao.txt`, e a configuração com menor MAPE em
+`runs/fase2_640/vencedora.json`.
+
+### 3. Modelo final e teste
+
+```bash
+.venv/bin/python scripts/fase3_teste.py --imgsz 640
+```
+
+Treina com todo o `data/train_aug` e avalia **uma única vez** nas 109 imagens
+de teste (MAPE com IC 95%, R², MAE, RMSE, Bland-Altman, MAPE por faixa, mAP).
+O script grava `runs/fase3_640/AVALIADO.lock` e não roda de novo sem `--force`.
+
+Para 1024 px, os mesmos comandos com `--imgsz 1024`.
+
+### Detalhes de implementação
+
+- **Folds:** K-Fold sobre as imagens originais, estratificado pela faixa de
+  área; as cópias aumentadas acompanham a origem (equivale ao `GroupKFold`
+  por `origem`). A validação usa só as originais.
+- **Pesos:** a validação durante o treino fica desligada (`val=False`) e
+  todas as fases usam os pesos da última época (`last.pt`). A escolha é feita
+  pelo MAPE, e a fase 3 não tem conjunto de validação para escolher época.
+- **Área:** mesmos parâmetros de inferência de 2026 (conf 0,20, iou 0,60,
+  `retina_masks`). Imagem sem escala ou sem fungo detectados conta como erro
+  de 100%.
+- **Resultados** ficam em `runs/` (fora do git). Para rodar um teste do
+  código sem a GPU, use `--saida` para outra pasta.
+
 ## Gabarito (`gabarito.csv`)
 
 | Coluna | Descrição |
